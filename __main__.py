@@ -11,215 +11,315 @@ from FSMFillForm import FSMFillForm
 import requests
 
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
+# TOKEN = os.getenv('TOKEN')
+TOKEN = ... # создай любого бота и вставь токен
 storage = MemoryStorage()
 bot = Bot(TOKEN)
 dp = Dispatcher(storage=storage)
 user_dict: dict[int, dict[str, any]] = {}
 
 
+# Основная задача - научиться обработать одновременно
+# и кнопку, и фотографии
+
 @dp.message(CommandStart(), StateFilter(default_state))
-async def start(message: Message):
-    await message.anser(
-        text=('Привет! Чтобы начать работу, введите '
-              'команду /get_price')
-    )
-
-
-@dp.message(Command(commands='get_price'), StateFilter(default_state))
-async def get_price(message: Message, state: FSMContext):
-    await message.answer(
-        text='Пожалуйста, введите адрес'
-    )
-    await state.set_state(FSMFillForm.address)
-
-
-@dp.message(StateFilter(FSMFillForm.address))
-async def address(message: Message, state: FSMContext):
-    await state.update_data(address=message.text)
+async def start(message: Message, state: FSMContext):
     keyboard: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text='',
-                callback_data='',
+                text='Кирпичный',
+                callback_data='brc',
             ),
             InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
+                text='Монолитный',
+                callback_data='mnl',
             ),
         ]
     ]
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
     await message.answer(
-        text='Выберите тип здания',
+        text='Отправь мне фотографии или нажми любую кнопку ниже',
         reply_markup=markup,
     )
-    await state.set_state(FSMFillForm.house_material)
-
-
-@dp.callback_query(StateFilter(FSMFillForm.house_material),
-                   F.data.in_([]))
-async def house_material(callback: CallbackQuery, state: FSMFillForm):
-    await state.update_data(house_material=callback.data)
-    await callback.message.answer(
-        text='Введите количество комнат'
-    )
-    await state.set_state(FSMFillForm.cnt_rooms)
-
-
-@dp.message(StateFilter(FSMFillForm.cnt_rooms))
-async def cnt_rooms(message: Message, state: FSMContext):
-    await state.update_data(cnt_rooms=message.text)
-    await message.answer(
-        text='Введите номер этажа'
-    )
-    await state.set_state(FSMFillForm.floor)
-
-
-@dp.message(StateFilter(FSMFillForm.floor))
-async def floor(message: Message, state: FSMContext):
-    await state.update_data(floor=message.text)
-    await message.answer(
-        text='Укажите площадь квартиры'
-    )
-    await state.set_state(FSMFillForm.area)
-
-@dp.message(StateFilter(FSMFillForm.area))
-async def area(message: Message, state: FSMContext):
-    await state.update_data(area=message.text)
-    ...
     await state.set_state(FSMFillForm.repair)
 
 
-@dp.callback_query(StateFilter(FSMFillForm.repair),
-                   F.data.in_([]))
-async def repair(callback: CallbackQuery, state: FSMFillForm):
-    await state.update_data(repair=callback.data)
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [
-            InlineKeyboardButton(
-                text='Да',
-                callback_data='1',
-            ),
-            InlineKeyboardButton(
-                text='Нет',
-                callback_data='0',
-            ),
-        ],
-    ]
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await callback.message.answer(
-        text='В доме есть лифт?',
-        reply_markup=markup,
-    )
-    await state.set_state(FSMFillForm.has_lift)
+@dp.message(StateFilter(FSMFillForm.repair))
+async def repair(message: Message, state: FSMContext):
+    """
+    Функция должна сделать print того, что послал юзер
+    Если юзер нажал на кнопку, то я должен увидеть
+    или mnl, или brc - что послал юзер
+    Если юзер послал фотографии, то я должен увидеть
+    list of PIL.Image. То есть полученные фотографии
+    нужно обработать и вывести лист на экран.
+    """
+    ...
+
+# @dp.message(CommandStart(), StateFilter(default_state))
+# async def start(message: Message):
+#     await message.anser(
+#         text=('Привет! Чтобы начать работу, введите '
+#               'команду /get_price')
+#     )
 
 
-@dp.callback_query(StateFilter(FSMFillForm.has_lift),
-                   F.data.in_(['0', '1']))
-async def has_lift(callback: CallbackQuery, state: FSMFillForm):
-    await state.update_data(has_lift=callback.data)
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-        ]
-    ]
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await callback.message.answer(
-        text='Выберите тип парковки',
-        reply_markup=markup,
-    )
-    await state.set_state(FSMFillForm.parking_type)
+# @dp.message(Command(commands='get_price'), StateFilter(default_state))
+# async def get_price(message: Message, state: FSMContext):
+#     await message.answer(
+#         text='Пожалуйста, введите адрес'
+#     )
+#     await state.set_state(FSMFillForm.address)
 
 
-@dp.callback_query(StateFilter(FSMFillForm.parking_type),
-                   F.data.in_([]))
-async def parking_type(callback: CallbackQuery, state: FSMFillForm):
-    await state.update_data(parking_type=callback.data)
-    await callback.message.answer(
-        text=('Напишите описнаие вашей квартиры. '
-              'Чем подробнее напишите, тем точнее '
-              'мы укажем реальную стоимость.')
-    )
-    await state.set_state(FSMFillForm.text)
+# @dp.message(StateFilter(FSMFillForm.address))
+# async def address(message: Message, state: FSMContext):
+#     await state.update_data(address=message.text)
+#     keyboard: list[list[InlineKeyboardButton]] = [
+#         [
+#             InlineKeyboardButton(
+#                 text='Кирпичный',
+#                 callback_data='brc',
+#             ),
+#             InlineKeyboardButton(
+#                 text='Монолитный',
+#                 callback_data='mnl',
+#             ),
+#         ],
+#         [
+#             InlineKeyboardButton(
+#                 text='Панельный',
+#                 callback_data='pnl',
+#             ),
+#             InlineKeyboardButton(
+#                 text='Блочный',
+#                 callback_data='blc',
+#             ),
+#         ],
+#         [
+#             InlineKeyboardButton(
+#                 text='Деревянный',
+#                 callback_data='wdn',
+#             ),
+#             InlineKeyboardButton(
+#                 text='Сталинский',
+#                 callback_data='stl',
+#             ),
+#         ],
+#         [
+#             InlineKeyboardButton(
+#                 text='Кирпично-монолитный',
+#                 callback_data='brm',
+#             ),
+#         ],
+#     ]
+#     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+#     await message.answer(
+#         text='Выберите тип здания',
+#         reply_markup=markup,
+#     )
+#     await state.set_state(FSMFillForm.house_material)
 
 
-@dp.message(StateFilter(FSMFillForm.text))
-async def text(message: Message, state: FSMContext):
-    await state.update_data(text=message.text)
-    user_dict[message.from_user.id] = await state.get_data()
-    await message.answer(
-        text=('Ваши данные успещно получены. '
-              'Через несколько секунд вы узнаете стоимость.')
-    )
-    await request(message.from_user.id)
+# @dp.callback_query(StateFilter(FSMFillForm.house_material),
+#                    F.data.in_([]))
+# async def house_material(callback: CallbackQuery, state: FSMFillForm):
+#     await state.update_data(house_material=callback.data)
+#     await callback.message.answer(
+#         text='Введите количество комнат'
+#     )
+#     await state.set_state(FSMFillForm.cnt_rooms)
 
 
-async def request(user_id):
-    url = 'http://localhost:8000/api/property/get_price/'
-    data = user_dict[user_id]
-    response = request.post(
-        url=url,
-        data=data
-    )
-    price = response['price']
-    await bot.send_message(
-        chat_id=user_id,
-        text=(f'Реальная стоимость квартиры: {price}'
-              f'Чтобы попробовать снова - введите /get_price')
-    )
+# @dp.message(StateFilter(FSMFillForm.cnt_rooms))
+# async def cnt_rooms(message: Message, state: FSMContext):
+#     await state.update_data(cnt_rooms=message.text)
+#     await message.answer(
+#         text='Введите номер этажа'
+#     )
+#     await state.set_state(FSMFillForm.floor)
 
 
-@dp.message(Command(commands='cancel'), ~StateFilter(default_state))
-async def cancel(message: Message, state: FSMContext):
-    await message.answer(
-        text=('Запрос отменен. Чтобы начать сначала, '
-              'введите /get_price')
-    )
-    await state.clear()
+# @dp.message(StateFilter(FSMFillForm.floor))
+# async def floor(message: Message, state: FSMContext):
+#     await state.update_data(floor=message.text)
+#     await message.answer(
+#         text='Укажите площадь квартиры'
+#     )
+#     await state.set_state(FSMFillForm.area)
+
+# @dp.message(StateFilter(FSMFillForm.area))
+# async def area(message: Message, state: FSMContext):
+#     await state.update_data(area=message.text)
+#     keyboard: list[InlineKeyboardButton] = [
+#         InlineKeyboardButton(
+#             text='Дизайнерский ремонт с мебелью',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Дизайнерский ремонт без мебели',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Евроремонт с мебелью',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Евроремонт без мебели',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Косметический ремонт с мебелью',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Косметический ремонт без мебели',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Старый ремонт с мебелью',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Старый ремонт без мебели',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Ремонта нет: предчистовая отделка',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Ремонта нет: средняя отделка',
+#             callback_data='1',
+#         ),
+#         InlineKeyboardButton(
+#             text='Ремонта нет: черновая отделка',
+#             callback_data='1',
+#         ),
+#     ]
+#     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+#     await message.answer(
+#         text=('В нашей модели встроена оценка ремонта квартиры '
+#               'по фотографиям. Чтобы ей воспользоваться, вы можете '
+#               'прислать нам в следующем сообщении фотографии своей '
+#               'квартиры.\n\nВажно: присылать фотографии нужно одним '
+#               'сообщением!\n\nЕсли вы не хотите присылать фотографии, то '
+#               'можете выбрать свой ремонт при помощи клавиатуры'),
+#         reply_markup=markup,
+#     )
+#     await state.set_state(FSMFillForm.repair)
+
+
+# @dp.callback_query(StateFilter(FSMFillForm.repair),
+#                    F.data.in_([]))
+# async def repair(callback: CallbackQuery, state: FSMFillForm):
+#     await state.update_data(repair=callback.data)
+#     keyboard: list[list[InlineKeyboardButton]] = [
+#         [
+#             InlineKeyboardButton(
+#                 text='Да',
+#                 callback_data='1',
+#             ),
+#             InlineKeyboardButton(
+#                 text='Нет',
+#                 callback_data='0',
+#             ),
+#         ],
+#     ]
+#     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+#     await callback.message.answer(
+#         text='В доме есть лифт?',
+#         reply_markup=markup,
+#     )
+#     await state.set_state(FSMFillForm.has_lift)
+
+
+# @dp.callback_query(StateFilter(FSMFillForm.has_lift),
+#                    F.data.in_(['0', '1']))
+# async def has_lift(callback: CallbackQuery, state: FSMFillForm):
+#     await state.update_data(has_lift=callback.data)
+#     keyboard: list[list[InlineKeyboardButton]] = [
+#         [
+#             InlineKeyboardButton(
+#                 text='',
+#                 callback_data='',
+#             ),
+#             InlineKeyboardButton(
+#                 text='',
+#                 callback_data='',
+#             ),
+#         ],
+#         [
+#             InlineKeyboardButton(
+#                 text='',
+#                 callback_data='',
+#             ),
+#             InlineKeyboardButton(
+#                 text='',
+#                 callback_data='',
+#             ),
+#         ],
+#         [
+#             InlineKeyboardButton(
+#                 text='',
+#                 callback_data='',
+#             ),
+#         ]
+#     ]
+#     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+#     await callback.message.answer(
+#         text='Выберите тип парковки',
+#         reply_markup=markup,
+#     )
+#     await state.set_state(FSMFillForm.parking_type)
+
+
+# @dp.callback_query(StateFilter(FSMFillForm.parking_type),
+#                    F.data.in_([]))
+# async def parking_type(callback: CallbackQuery, state: FSMFillForm):
+#     await state.update_data(parking_type=callback.data)
+#     await callback.message.answer(
+#         text=('Напишите описнаие вашей квартиры. '
+#               'Чем подробнее напишите, тем точнее '
+#               'мы укажем реальную стоимость.')
+#     )
+#     await state.set_state(FSMFillForm.text)
+
+
+# @dp.message(StateFilter(FSMFillForm.text))
+# async def text(message: Message, state: FSMContext):
+#     await state.update_data(text=message.text)
+#     user_dict[message.from_user.id] = await state.get_data()
+#     await message.answer(
+#         text=('Ваши данные успещно получены. '
+#               'Через несколько секунд вы узнаете стоимость.')
+#     )
+#     await request(message.from_user.id)
+#     await state.clear()
+
+
+# async def request(user_id):
+#     url = 'http://localhost:8000/api/property/get_price/'
+#     data = user_dict[user_id]
+#     response = request.post(
+#         url=url,
+#         data=data
+#     )
+#     price = response['price']
+#     await bot.send_message(
+#         chat_id=user_id,
+#         text=(f'Реальная стоимость квартиры: {price}'
+#               f'Чтобы попробовать снова - введите /get_price')
+#     )
+
+
+# @dp.message(Command(commands='cancel'), ~StateFilter(default_state))
+# async def cancel(message: Message, state: FSMContext):
+#     await message.answer(
+#         text=('Запрос отменен. Чтобы начать сначала, '
+#               'введите /get_price')
+#     )
+#     await state.clear()
 
 
 if __name__ == '__main__':
