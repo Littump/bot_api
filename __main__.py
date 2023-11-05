@@ -8,11 +8,13 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 from dotenv import load_dotenv
 import os
 from FSMFillForm import FSMFillForm
+import io
+from PIL import Image
+from aiogram.types import InputFile
 import requests
 
 load_dotenv()
-# TOKEN = os.getenv('TOKEN')
-TOKEN = ... # создай любого бота и вставь токен
+TOKEN = os.getenv('6958394463:AAGdb7GJy7bJsGqNkOn8v0-8hoiU9DnlWAA')
 storage = MemoryStorage()
 bot = Bot(TOKEN)
 dp = Dispatcher(storage=storage)
@@ -44,17 +46,26 @@ async def start(message: Message, state: FSMContext):
     await state.set_state(FSMFillForm.repair)
 
 
-@dp.message(StateFilter(FSMFillForm.repair))
-async def repair(message: Message, state: FSMContext):
-    """
-    Функция должна сделать print того, что послал юзер
-    Если юзер нажал на кнопку, то я должен увидеть
-    или mnl, или brc - что послал юзер
-    Если юзер послал фотографии, то я должен увидеть
-    list of PIL.Image. То есть полученные фотографии
-    нужно обработать и вывести лист на экран.
-    """
-    ...
+@dp.message_handler(StateFilter(FSMFillForm.repair))
+async def handle_message_repair(message: Message, state: FSMContext):
+    if message.text:
+        if message.text in ['mnl', 'brc']:
+            await message.answer(f'Вы выбрали опцию: {message.text}')
+    elif message.photo:
+        photos = message.photo
+        image_list = []
+
+        for photo in photos:
+            image = Image.open(io.BytesIO(await photo.download()))
+            image_list.append(image)
+
+        # Выводим список фотографий в лог
+        for i, image in enumerate(image_list):
+            image.save(f'photo_{i}.jpg')
+
+        for i, image in enumerate(image_list):
+            input_file = InputFile(f'photo_{i}.jpg')
+            await message.answer_photo(input_file, f'Фото {i + 1}')
 
 # @dp.message(CommandStart(), StateFilter(default_state))
 # async def start(message: Message):
