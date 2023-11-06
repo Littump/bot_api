@@ -14,7 +14,7 @@ from aiogram.types import InputFile
 import requests
 
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
+TOKEN = '6958394463:AAGdb7GJy7bJsGqNkOn8v0-8hoiU9DnlWAA'
 storage = MemoryStorage()
 bot = Bot(TOKEN)
 dp = Dispatcher(storage=storage)
