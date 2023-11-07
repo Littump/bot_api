@@ -23,7 +23,7 @@ user_dict: dict[int, dict[str, any]] = {}
 
 @dp.message(CommandStart(), StateFilter(default_state))
 async def start(message: Message):
-    await message.anser(
+    await message.answer(
         text=('Привет! Чтобы начать работу, введите '
               'команду /get_price')
     )
@@ -87,7 +87,7 @@ async def address(message: Message, state: FSMContext):
 
 
 @dp.callback_query(StateFilter(FSMFillForm.house_material),
-                   F.data.in_([]))
+                   F.data.in_(['brc', 'mnl', 'pnl', 'blc', 'wdn', 'stl', 'brm']))
 async def house_material(callback: CallbackQuery, state: FSMFillForm):
     await state.update_data(house_material=callback.data)
     await callback.message.answer(
@@ -143,9 +143,16 @@ async def repair_photo(message: Message, state: FSMContext):
     photos = message.photo
     image_list = []
 
-    for photo in photos:
-        image = Image.open(io.BytesIO(await photo.download()))
-        image_list.append(image)
+    for photo in message.photo:
+        file_info = await bot.get_file(photo.file_id)
+        file_path = file_info.file_path
+
+        file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
+
+        response = requests.get(file_url)
+        if response.status_code == 200:
+            image = Image.open(io.BytesIO(response.content))
+            image_list.append(image)
 
     await state.update_data(repair=image_list)
     keyboard: list[list[InlineKeyboardButton]] = [
@@ -169,7 +176,7 @@ async def repair_photo(message: Message, state: FSMContext):
 
 
 @dp.callback_query(StateFilter(FSMFillForm.repair_photo),
-                   F.data.in_([]))
+                   F.data.in_(['repair_button']))
 async def repair_text(callback: CallbackQuery, state: FSMFillForm):
     keyboard: list[InlineKeyboardButton] = [
         [InlineKeyboardButton(
@@ -222,11 +229,11 @@ async def repair_text(callback: CallbackQuery, state: FSMFillForm):
         text=('Выберите тип ремонта'),
         reply_markup=markup,
     )
-    await state.set_state(FSMFillForm.repair)
+    await state.set_state(FSMFillForm.repair_button)
 
 
-@dp.callback_query(StateFilter(FSMFillForm.repair),
-                   F.data.in_([]))
+@dp.callback_query(StateFilter(FSMFillForm.repair_button),
+                   F.data.in_(['0;0', '1;0', '2;0', '0;1', '1;1', '2;1', '3;1', '0;2', '1;2', '2;2', '3;2']))
 async def repair(callback: CallbackQuery, state: FSMFillForm):
     await state.update_data(repair=callback.data)
     keyboard: list[list[InlineKeyboardButton]] = [
@@ -256,28 +263,28 @@ async def has_lift(callback: CallbackQuery, state: FSMFillForm):
     keyboard: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text='',
-                callback_data='',
+                text='парковка на крыше',
+                callback_data='1',
             ),
             InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
-            ),
-            InlineKeyboardButton(
-                text='',
-                callback_data='',
+                text='наземная парковка',
+                callback_data='2',
             ),
         ],
         [
             InlineKeyboardButton(
-                text='',
-                callback_data='',
+                text='подземная парковка',
+                callback_data='3',
+            ),
+            InlineKeyboardButton(
+                text='многоуровневая парковка',
+                callback_data='4',
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text='нет парковки',
+                callback_data='5',
             ),
         ]
     ]
@@ -290,7 +297,7 @@ async def has_lift(callback: CallbackQuery, state: FSMFillForm):
 
 
 @dp.callback_query(StateFilter(FSMFillForm.parking_type),
-                   F.data.in_([]))
+                   F.data.in_(['1', '2', '3', '4', '5']))
 async def parking_type(callback: CallbackQuery, state: FSMFillForm):
     await state.update_data(parking_type=callback.data)
     await callback.message.answer(
@@ -316,7 +323,7 @@ async def text(message: Message, state: FSMContext):
 async def request(user_id):
     url = 'http://localhost:8000/api/property/get_price/'
     data = user_dict[user_id]
-    response = request.post(
+    response = requests.post(
         url=url,
         data=data
     )
