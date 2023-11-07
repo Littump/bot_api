@@ -2,7 +2,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class FSMFillForm(StatesGroup):
-    adress = State()
+    address = State()
     house_material = State()
     object_type = State()
     cnt_rooms = State()
