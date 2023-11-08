@@ -6,12 +6,21 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize)
 from dotenv import load_dotenv
+import base64
 import os
 from FSMFillForm import FSMFillForm
 import io
 from PIL import Image
 from aiogram.types import InputFile
+import json
 import requests
+url = 'https://estate-valuation.tech/api/property/calculate_repair/'
+file = Image.open('1.jpeg')
+a = io.BytesIO()
+file.save(a, format = 'PNG')
+files = {'photos': (file.filename, a.getvalue(), 'image/jpeg')}
+response = requests.post(url, files=files)
+q = 1
 
 load_dotenv()
 TOKEN = '6958394463:AAGdb7GJy7bJsGqNkOn8v0-8hoiU9DnlWAA'
@@ -35,6 +44,10 @@ async def get_price(message: Message, state: FSMContext):
         text='Пожалуйста, введите адрес'
     )
     await state.set_state(FSMFillForm.address)
+
+@dp.message(Command(commands='clear'), StateFilter(default_state))
+async def get_price(message: Message, state: FSMContext):
+    await state.clear()
 
 
 @dp.message(StateFilter(FSMFillForm.address))
@@ -109,7 +122,40 @@ async def cnt_rooms(message: Message, state: FSMContext):
 async def floor(message: Message, state: FSMContext):
     await state.update_data(floor=message.text)
     await message.answer(
-        text='Укажите площадь квартиры'
+        text='Введите количество этажей в доме'
+    )
+    await state.set_state(FSMFillForm.floors)
+    
+
+@dp.message(StateFilter(FSMFillForm.floors))
+async def floors(message: Message, state: FSMContext):
+    await state.update_data(floors=message.text)
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text='первичка',
+                callback_data='1_1',
+            ),
+            InlineKeyboardButton(
+                text='вторичка',
+                callback_data='2_2',
+            ),
+        ],
+    ]
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    await message.answer(
+        text=('Выбрать тип недвижимости'),
+        reply_markup = markup
+    )
+    await state.set_state(FSMFillForm.object_type)
+
+@dp.callback_query(StateFilter(FSMFillForm.object_type),
+                   F.data.in_(['1_1', "2_2"]))
+async def object_type(callback: CallbackQuery, state: FSMFillForm):
+    transform_123 = {'1_1':"1", "2_2":'2'}
+    await state.update_data(object_type=transform_123[callback.data])
+    await callback.message.answer(
+        text=('Введите площадь квартиры'),
     )
     await state.set_state(FSMFillForm.area)
 
@@ -140,39 +186,50 @@ async def area(message: Message, state: FSMContext):
 
 @dp.message(StateFilter(FSMFillForm.repair_photo))
 async def repair_photo(message: Message, state: FSMContext):
-    photos = message.photo
-    image_list = []
-
-    for photo in message.photo:
+    try:
+        photos = message.photo
+        photo = photos[-1]
         file_info = await bot.get_file(photo.file_id)
         file_path = file_info.file_path
 
         file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
 
         response = requests.get(file_url)
+        
         if response.status_code == 200:
             image = Image.open(io.BytesIO(response.content))
-            image_list.append(image)
+            bytes = io.BytesIO()
+            image.save(bytes, format = 'PNG')
+            await state.update_data(photos=("photo.jpeg", bytes.getvalue(), 'image/jpeg'))
+        else:
+            await state.update_data(photos=())
+        
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [
+                InlineKeyboardButton(
+                    text='Да',
+                    callback_data='1',
+                ),
+                InlineKeyboardButton(
+                    text='Нет',
+                    callback_data='0',
+                ),
+            ],
+        ]
+        markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        await message.answer(
+            text='В доме есть лифт?',
+            reply_markup=markup,
+        )
+        await state.update_data(asked_lift=True)
+        await state.set_state(FSMFillForm.has_lift)
+    except:
+        await message.answer(
+            text='Не удалось обработать изображение, повторите попытку'
+        )
 
-    await state.update_data(repair=image_list)
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [
-            InlineKeyboardButton(
-                text='Да',
-                callback_data='1',
-            ),
-            InlineKeyboardButton(
-                text='Нет',
-                callback_data='0',
-            ),
-        ],
-    ]
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await message.answer(
-        text='В доме есть лифт?',
-        reply_markup=markup,
-    )
-    await state.set_state(FSMFillForm.has_lift)
+
+
 
 
 @dp.callback_query(StateFilter(FSMFillForm.repair_photo),
@@ -264,27 +321,27 @@ async def has_lift(callback: CallbackQuery, state: FSMFillForm):
         [
             InlineKeyboardButton(
                 text='парковка на крыше',
-                callback_data='1',
+                callback_data='orf',
             ),
             InlineKeyboardButton(
                 text='наземная парковка',
-                callback_data='2',
+                callback_data='grn',
             ),
         ],
         [
             InlineKeyboardButton(
                 text='подземная парковка',
-                callback_data='3',
+                callback_data='und',
             ),
             InlineKeyboardButton(
                 text='многоуровневая парковка',
-                callback_data='4',
+                callback_data='mlt',
             ),
         ],
         [
             InlineKeyboardButton(
                 text='нет парковки',
-                callback_data='5',
+                callback_data='0',
             ),
         ]
     ]
@@ -297,11 +354,11 @@ async def has_lift(callback: CallbackQuery, state: FSMFillForm):
 
 
 @dp.callback_query(StateFilter(FSMFillForm.parking_type),
-                   F.data.in_(['1', '2', '3', '4', '5']))
+                   F.data.in_(['0', 'mlt', 'und', 'grn', 'orf']))
 async def parking_type(callback: CallbackQuery, state: FSMFillForm):
     await state.update_data(parking_type=callback.data)
     await callback.message.answer(
-        text=('Напишите описнаие вашей квартиры. '
+        text=('Напишите описание вашей квартиры. '
               'Чем подробнее напишите, тем точнее '
               'мы укажем реальную стоимость.')
     )
@@ -316,18 +373,39 @@ async def text(message: Message, state: FSMContext):
         text=('Ваши данные успещно получены. '
               'Через несколько секунд вы узнаете стоимость.')
     )
-    await request(message.from_user.id)
+    try:
+        await request(message.from_user.id)
+    except:
+        await message.answer(
+        text=('Ошибка ввода'
+              'Повторите попытку')
+        )
     await state.clear()
 
 
-async def request(user_id):
-    url = 'http://localhost:8000/api/property/get_price/'
+def get_repair(pil_array, user_id):
+    url = 'https://estate-valuation.tech/api/property/calculate_repair/'
     data = user_dict[user_id]
+    a = {}
+    a['photos'] = data['photos']
+    response = requests.post(
+        url=url,
+        files = a
+    )
+    return response.json()['repair']
+
+async def request(user_id):
+    url = 'https://estate-valuation.tech/api/property/get_price/'
+    data = user_dict[user_id]
+    data['repair'] = get_repair(data, user_id)
+    data.pop('photos', None)
+    #print(data)
     response = requests.post(
         url=url,
         data=data
     )
-    price = response['price']
+    # print(response.json())
+    price = round(response.json()['price'])
     await bot.send_message(
         chat_id=user_id,
         text=(f'Реальная стоимость квартиры: {price}'
