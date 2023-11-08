@@ -397,7 +397,8 @@ def get_repair(pil_array, user_id):
 async def request(user_id):
     url = 'https://estate-valuation.tech/api/property/get_price/'
     data = user_dict[user_id]
-    data['repair'] = get_repair(data, user_id)
+    if not ('repair' in data and data['repair'] and len(data['repair']) == 3):
+        data['repair'] = get_repair(data, user_id)
     data.pop('photos', None)
     response = requests.post(
         url=url,
