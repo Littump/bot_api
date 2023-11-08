@@ -13,3 +13,5 @@ class FSMFillForm(StatesGroup):
     has_lift = State()
     parking_type = State()
     text = State()
+    object_type = State()
+    floors = State()
