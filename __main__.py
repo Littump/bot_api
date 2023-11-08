@@ -12,7 +12,6 @@ import io
 from PIL import Image
 from aiogram.types import InputFile
 import requests
-
 load_dotenv()
 TOKEN = '6958394463:AAGdb7GJy7bJsGqNkOn8v0-8hoiU9DnlWAA'
 storage = MemoryStorage()
@@ -140,39 +139,46 @@ async def area(message: Message, state: FSMContext):
 
 @dp.message(StateFilter(FSMFillForm.repair_photo))
 async def repair_photo(message: Message, state: FSMContext):
+    if "asked_lift" not in await state.get_data():
+        print('ti lox')
+        # Здесь задаем вопрос о наличии лифта
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [
+                InlineKeyboardButton(
+                    text='Да',
+                    callback_data='1',
+                ),
+                InlineKeyboardButton(
+                    text='Нет',
+                    callback_data='0',
+                ),
+            ],
+        ]
+        markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        await message.answer(
+            text='В доме есть лифт?',
+            reply_markup=markup,
+        )
+        await state.update_data(asked_lift=True)
     photos = message.photo
     image_list = []
+    print(len(photos))
+    photo = photos[-1]
+    file_info = await bot.get_file(photo.file_id)
+    file_path = file_info.file_path
 
-    for photo in message.photo:
-        file_info = await bot.get_file(photo.file_id)
-        file_path = file_info.file_path
+    file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
 
-        file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
-
-        response = requests.get(file_url)
-        if response.status_code == 200:
-            image = Image.open(io.BytesIO(response.content))
-            image_list.append(image)
-
+    response = requests.get(file_url)
+    
+    if response.status_code == 200:
+        image = Image.open(io.BytesIO(response.content))
+        image_list.append(image)
+        image.save(f"{len(image_list)}_.jpg")
     await state.update_data(repair=image_list)
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [
-            InlineKeyboardButton(
-                text='Да',
-                callback_data='1',
-            ),
-            InlineKeyboardButton(
-                text='Нет',
-                callback_data='0',
-            ),
-        ],
-    ]
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await message.answer(
-        text='В доме есть лифт?',
-        reply_markup=markup,
-    )
     await state.set_state(FSMFillForm.has_lift)
+
+
 
 
 @dp.callback_query(StateFilter(FSMFillForm.repair_photo),
