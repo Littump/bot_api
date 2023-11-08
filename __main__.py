@@ -17,6 +17,20 @@ dp = Dispatcher(storage=storage)
 user_dict: dict[int, dict[str, any]] = {}
 
 
+@dp.message(Command(commands='cancel'), ~StateFilter(default_state))
+async def cancel(message: Message, state: FSMContext):
+    await message.answer(
+        text=('Запрос отменен. Чтобы начать сначала, '
+              'введите /get_price')
+    )
+    await state.clear()
+
+
+@dp.message(Command(commands='clear'), StateFilter(default_state))
+async def clear(message: Message, state: FSMContext):
+    await state.clear()
+
+
 @dp.message(CommandStart(), StateFilter(default_state))
 async def start(message: Message):
     await message.answer(
@@ -31,10 +45,6 @@ async def get_price(message: Message, state: FSMContext):
         text='Пожалуйста, введите адрес'
     )
     await state.set_state(FSMFillForm.address)
-
-@dp.message(Command(commands='clear'), StateFilter(default_state))
-async def get_price(message: Message, state: FSMContext):
-    await state.clear()
 
 
 @dp.message(StateFilter(FSMFillForm.address))
@@ -87,7 +97,8 @@ async def address(message: Message, state: FSMContext):
 
 
 @dp.callback_query(StateFilter(FSMFillForm.house_material),
-                   F.data.in_(['brc', 'mnl', 'pnl', 'blc', 'wdn', 'stl', 'brm']))
+                   F.data.in_(['brc', 'mnl', 'pnl', 'blc',
+                               'wdn', 'stl', 'brm']))
 async def house_material(callback: CallbackQuery, state: FSMFillForm):
     await state.update_data(house_material=callback.data)
     await callback.message.answer(
@@ -112,7 +123,7 @@ async def floor(message: Message, state: FSMContext):
         text='Введите количество этажей в доме'
     )
     await state.set_state(FSMFillForm.floors)
-    
+
 
 @dp.message(StateFilter(FSMFillForm.floors))
 async def floors(message: Message, state: FSMContext):
@@ -132,14 +143,15 @@ async def floors(message: Message, state: FSMContext):
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
     await message.answer(
         text=('Выбрать тип недвижимости'),
-        reply_markup = markup
+        reply_markup=markup
     )
     await state.set_state(FSMFillForm.object_type)
+
 
 @dp.callback_query(StateFilter(FSMFillForm.object_type),
                    F.data.in_(['1_1', "2_2"]))
 async def object_type(callback: CallbackQuery, state: FSMFillForm):
-    transform_123 = {'1_1':"1", "2_2":'2'}
+    transform_123 = {'1_1': "1", "2_2": '2'}
     await state.update_data(object_type=transform_123[callback.data])
     await callback.message.answer(
         text=('Введите площадь квартиры'),
@@ -182,15 +194,16 @@ async def repair_photo(message: Message, state: FSMContext):
         file_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
 
         response = requests.get(file_url)
-        
+
         if response.status_code == 200:
             image = Image.open(io.BytesIO(response.content))
             bytes = io.BytesIO()
-            image.save(bytes, format = 'PNG')
-            await state.update_data(photos=("photo.jpeg", bytes.getvalue(), 'image/jpeg'))
+            image.save(bytes, format='PNG')
+            await state.update_data(photos=("photo.jpeg",
+                                            bytes.getvalue(), 'image/jpeg'))
         else:
             await state.update_data(photos=())
-        
+
         keyboard: list[list[InlineKeyboardButton]] = [
             [
                 InlineKeyboardButton(
@@ -210,13 +223,11 @@ async def repair_photo(message: Message, state: FSMContext):
         )
         await state.update_data(asked_lift=True)
         await state.set_state(FSMFillForm.has_lift)
-    except:
+    except Exception:
         await message.answer(
             text='Не удалось обработать изображение, повторите попытку'
         )
-
-
-
+        await state.clear()
 
 
 @dp.callback_query(StateFilter(FSMFillForm.repair_photo),
@@ -277,7 +288,8 @@ async def repair_text(callback: CallbackQuery, state: FSMFillForm):
 
 
 @dp.callback_query(StateFilter(FSMFillForm.repair_button),
-                   F.data.in_(['0;0', '1;0', '2;0', '0;1', '1;1', '2;1', '3;1', '0;2', '1;2', '2;2', '3;2']))
+                   F.data.in_(['0;0', '1;0', '2;0', '0;1', '1;1', '2;1', '3;1',
+                               '0;2', '1;2', '2;2', '3;2']))
 async def repair(callback: CallbackQuery, state: FSMFillForm):
     await state.update_data(repair=callback.data)
     keyboard: list[list[InlineKeyboardButton]] = [
@@ -357,15 +369,15 @@ async def text(message: Message, state: FSMContext):
     await state.update_data(text=message.text)
     user_dict[message.from_user.id] = await state.get_data()
     await message.answer(
-        text=('Ваши данные успещно получены. '
+        text=('Ваши данные успешно получены.\n'
               'Через несколько секунд вы узнаете стоимость.')
     )
     try:
         await request(message.from_user.id)
-    except:
+    except Exception:
         await message.answer(
-        text=('Ошибка ввода'
-              'Повторите попытку')
+            text=('Ошибка ввода\n'
+                  'Повторите попытку')
         )
     await state.clear()
 
@@ -377,36 +389,27 @@ def get_repair(pil_array, user_id):
     a['photos'] = data['photos']
     response = requests.post(
         url=url,
-        files = a
+        files=a
     )
     return response.json()['repair']
+
 
 async def request(user_id):
     url = 'https://estate-valuation.tech/api/property/get_price/'
     data = user_dict[user_id]
     data['repair'] = get_repair(data, user_id)
     data.pop('photos', None)
-    #print(data)
     response = requests.post(
         url=url,
         data=data
     )
-    # print(response.json())
     price = round(response.json()['price'])
+    price = '{:,.0f}'.format(price).replace(',', ' ')
     await bot.send_message(
         chat_id=user_id,
-        text=(f'Реальная стоимость квартиры: {price}'
+        text=(f'Реальная стоимость квартиры: {price}\n\n'
               f'Чтобы попробовать снова - введите /get_price')
     )
-
-
-@dp.message(Command(commands='cancel'), ~StateFilter(default_state))
-async def cancel(message: Message, state: FSMContext):
-    await message.answer(
-        text=('Запрос отменен. Чтобы начать сначала, '
-              'введите /get_price')
-    )
-    await state.clear()
 
 
 if __name__ == '__main__':
