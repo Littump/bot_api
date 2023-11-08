@@ -1,28 +1,15 @@
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup, default_state
+from aiogram.fsm.state import default_state
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message, PhotoSize)
-from dotenv import load_dotenv
-import base64
-import os
+                           InlineKeyboardMarkup, Message)
 from FSMFillForm import FSMFillForm
 import io
 from PIL import Image
-from aiogram.types import InputFile
-import json
 import requests
-url = 'https://estate-valuation.tech/api/property/calculate_repair/'
-file = Image.open('1.jpeg')
-a = io.BytesIO()
-file.save(a, format = 'PNG')
-files = {'photos': (file.filename, a.getvalue(), 'image/jpeg')}
-response = requests.post(url, files=files)
-q = 1
 
-load_dotenv()
 TOKEN = '6958394463:AAGdb7GJy7bJsGqNkOn8v0-8hoiU9DnlWAA'
 storage = MemoryStorage()
 bot = Bot(TOKEN)
